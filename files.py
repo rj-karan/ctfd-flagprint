@@ -10,14 +10,17 @@ from flask import current_app
 from werkzeug.utils import secure_filename
 
 SCRIPT_NAME = "generate.py"
-# generate.py runs in flagprint/generator (Python plus C, Rust and binary tools for rev/pwn builds, see
-# generator/Dockerfile). Plain Python is the fallback if it hasn't been built on this server.
-SANDBOX_IMAGE = os.environ.get("FLAGPRINT_SANDBOX_IMAGE", "flagprint/generator:latest")
+# generate.py runs in the Flagprint sandbox image: Python plus C, Rust and binary tools for rev/pwn builds
+# (see generator/Dockerfile). The first image present on the host wins; plain Python is the last resort.
+SANDBOX_IMAGES = [
+    os.environ.get("FLAGPRINT_SANDBOX_IMAGE") or "ghcr.io/rj-karan/flagprint-generator:latest",
+    "flagprint/generator:latest",  # built locally from generator/
+]
 FALLBACK_IMAGE = "python:3.12-slim"
 SANDBOX_TIMEOUT = 180
 SANDBOX_MEMORY = "1g"
-TOOL_HINT = ("The script needs a tool the sandbox doesn't have. Build the full sandbox on the server: "
-             "docker build -t flagprint/generator:latest CTFd/plugins/flagprint/generator")
+TOOL_HINT = ("The script needs a tool the plain Python image doesn't have. Pull the Flagprint sandbox on the server: "
+             f"docker pull {SANDBOX_IMAGES[0]}")
 MAX_SOURCE_SIZE = 200 * 1024 * 1024
 
 _locks = {}
@@ -202,6 +205,19 @@ def _tar_of(files):
     return buffer.getvalue()
 
 
+def sandbox_image(client):
+    """The first sandbox image present on this host, or None."""
+    import docker
+
+    for name in SANDBOX_IMAGES:
+        try:
+            client.images.get(name)
+            return name
+        except docker.errors.ImageNotFound:
+            continue
+    return None
+
+
 def run_script(script, output_name, flag, input_item=None, label="test"):
     """Run a generate.py in a locked-down container and return the file it wrote.
 
@@ -216,11 +232,9 @@ def run_script(script, output_name, flag, input_item=None, label="test"):
         files["work/input/" + input_item[0]] = input_item[1]
     try:
         client = docker.from_env()
-        image = SANDBOX_IMAGE
-        try:
-            client.images.get(SANDBOX_IMAGE)
-        except docker.errors.ImageNotFound:
-            image = FALLBACK_IMAGE
+        image = sandbox_image(client)
+        if image is None:
+            image = FALLBACK_IMAGE  # small enough to pull inside a request; the sandbox is not
             try:
                 client.images.get(FALLBACK_IMAGE)
             except docker.errors.ImageNotFound:

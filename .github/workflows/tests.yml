@@ -41,4 +41,6 @@ jobs:
 
       - name: Run tests
         working-directory: ctfd
+        env:
+          FLAGPRINT_SANDBOX_IMAGE: flagprint/generator:latest  # the image built above, not the published one
         run: python -m pytest tests/flagprint -v -p no:randomly -W ignore

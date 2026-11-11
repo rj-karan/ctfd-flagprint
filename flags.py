@@ -6,7 +6,8 @@ import re
 import secrets
 from dataclasses import dataclass
 
-from CTFd.utils import get_config, set_config
+from flask import current_app
+
 from CTFd.utils.config import is_teams_mode
 from CTFd.utils.modes import get_model
 from CTFd.utils.user import get_current_team, get_current_user
@@ -17,12 +18,27 @@ SECRET_CONFIG_KEY = "flagprint_secret"
 
 
 def _secret():
-    # Kept in the database rather than derived from SECRET_KEY so rotating the session key never changes issued flags.
-    value = get_config(SECRET_CONFIG_KEY)
-    if not value:
-        value = secrets.token_hex(32)
-        set_config(SECRET_CONFIG_KEY, value)
-    return value.encode()
+    """The key behind every team code, created once and kept in the database rather than derived
+    from SECRET_KEY, so rotating the session key never changes issued flags."""
+    cached = getattr(current_app, "_flagprint_secret", None)
+    if cached is None:
+        cached = current_app._flagprint_secret = _load_secret().encode()
+    return cached
+
+
+def _load_secret():
+    from CTFd.models import Configs, db
+
+    def stored():
+        # Several workers starting together may each insert one; the lowest id wins for all of them.
+        return Configs.query.filter_by(key=SECRET_CONFIG_KEY).order_by(Configs.id).first()
+
+    row = stored()
+    if row is None or not row.value:
+        db.session.add(Configs(key=SECRET_CONFIG_KEY, value=secrets.token_hex(32)))
+        db.session.commit()
+        row = stored()
+    return row.value
 
 
 def versions(challenge_id):

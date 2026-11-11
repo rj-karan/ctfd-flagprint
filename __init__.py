@@ -6,6 +6,7 @@ from flask import (
     Blueprint,
     abort,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -15,7 +16,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from CTFd.models import Challenges, Submissions, Tracking, Users, db
+from CTFd.models import Challenges, Solves, Submissions, Tracking, Users, db
 from CTFd.exceptions.challenges import ChallengeCreateException, ChallengeUpdateException
 from CTFd.plugins import (
     Menu,
@@ -34,6 +35,7 @@ from CTFd.utils.user import get_ip, is_admin
 
 from . import files
 from .flags import (
+    _secret,
     regenerate,
     versions,
     classify,
@@ -339,11 +341,24 @@ def view_context(challenge):
 blueprint = Blueprint("flagprint", __name__, template_folder="templates")
 
 
+def _locked(challenge, account_id):
+    """True while this account still has to solve one of the challenge's prerequisites."""
+    prerequisites = set((challenge.requirements or {}).get("prerequisites", []))
+    if not prerequisites:
+        return False
+    column = Solves.team_id if is_teams_mode() else Solves.user_id
+    solved = {row[0] for row in Solves.query.with_entities(Solves.challenge_id).filter(column == account_id).all()}
+    return not prerequisites <= solved
+
+
 def _account_label(account_id):
     if account_id is None:
         return "—"
-    account = get_model().query.filter_by(id=account_id).first()
-    return account.name if account else f"#{account_id}"
+    labels = g.setdefault("flagprint_labels", {})  # one lookup per account per request, not per table row
+    if account_id not in labels:
+        account = get_model().query.filter_by(id=account_id).first()
+        labels[account_id] = account.name if account else f"#{account_id}"
+    return labels[account_id]
 
 
 @blueprint.route("/download/<int:challenge_id>")
@@ -351,12 +366,16 @@ def _account_label(account_id):
 @require_verified_emails
 def download(challenge_id):
     challenge = PersonalChallenge.query.filter_by(id=challenge_id).first_or_404()
-    if not is_admin():
-        if challenge.state == "hidden" or not ctf_started() or ctf_paused() or ctf_ended():
-            abort(403)
+    if challenge.delivery not in ("replace", "script") or not challenge.filename:
+        abort(404)
     account_id = current_account_id()
     if account_id is None:
         abort(403)
+    if not is_admin():
+        if challenge.state == "hidden" or not ctf_started() or ctf_paused() or ctf_ended():
+            abort(403)
+        if _locked(challenge, account_id):
+            abort(403)  # the same rule CTFd applies to the challenge itself: prerequisites first
     try:
         path = files.issued_file(challenge, account_id, flag_for(challenge, account_id))
     except files.GenerationError as error:
@@ -687,6 +706,7 @@ def form_state(challenge):
 
 def load(app):
     upgrade(plugin_name=PLUGIN_DIR)
+    _secret()  # settle the flag secret before any worker issues a flag
     CHALLENGE_CLASSES[PersonalValueChallenge.id] = PersonalValueChallenge
     # Create/update forms explain how the flags work, so only admins may fetch them
     # (CTFd's register_plugin_assets_directory ignores its admins_only flag).

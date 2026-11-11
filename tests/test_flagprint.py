@@ -481,8 +481,8 @@ def test_script_that_checks_the_flag_format_is_accepted():
 def test_rev_generator_can_compile_a_binary_per_team():
     from CTFd.plugins.flagprint import files
 
-    if files.SANDBOX_IMAGE not in _docker_images():
-        pytest.skip("flagprint/generator is not built on this machine")
+    if not set(files.SANDBOX_IMAGES) & _docker_images():
+        pytest.skip("the Flagprint sandbox image is not on this machine")
     app = create_ctfd(enable_plugins=True)
     with app.app_context():
         admin = login_as_user(app, name="admin")
@@ -544,4 +544,34 @@ def test_hall_of_shame_menu_link_follows_the_setting():
         admin.post("/admin/flagprint/shame", data={"action": "settings", "nonce": _nonce(admin)})
         assert "/hall-of-shame" not in user.get("/challenges").get_data(as_text=True)
         assert user.get("/hall-of-shame").status_code == 404
+    destroy_ctfd(app)
+
+
+def test_download_needs_prerequisites_and_a_file():
+    app = create_ctfd(enable_plugins=True)
+    with app.app_context():
+        admin = login_as_user(app, name="admin")
+        first = _create(admin, name="first").get_json()["data"]["id"]
+        second = _create(admin, name="second", delivery="replace", upload_source=_upload("n.txt", SAMPLE.encode()),
+                         requirements={"prerequisites": [first]}).get_json()["data"]["id"]
+        register_user(app, name="alice", email="alice@example.com")
+        alice = login_as_user(app, name="alice")
+        assert alice.get(f"/download/{first}").status_code == 404  # flag-only: nothing to download
+        assert alice.get(f"/download/{second}").status_code == 403  # locked until "first" is solved
+        assert _attempt(alice, first, flag_for(PersonalChallenge.query.get(first), 2))["status"] == "correct"
+        assert alice.get(f"/download/{second}").status_code == 200
+    destroy_ctfd(app)
+
+
+def test_flag_secret_is_created_once_and_shared():
+    from CTFd.models import Configs
+    from CTFd.plugins.flagprint.flags import SECRET_CONFIG_KEY, _secret
+
+    app = create_ctfd(enable_plugins=True)
+    with app.app_context():
+        rows = Configs.query.filter_by(key=SECRET_CONFIG_KEY).all()
+        assert len(rows) == 1 and len(rows[0].value) == 64  # made at startup, not on the first flag
+        assert _secret() == rows[0].value.encode()
+        app._flagprint_secret = None  # a second worker starting up reads the same row
+        assert _secret() == rows[0].value.encode()
     destroy_ctfd(app)

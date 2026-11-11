@@ -1,0 +1,48 @@
+name: sandbox image
+
+# Publishes the generate.py sandbox to GitHub Container Registry, so organizers pull it instead of building it.
+on:
+  push:
+    branches: [main]
+    paths: [generator/**, .github/workflows/sandbox-image.yml]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/flagprint-generator
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=Flagprint sandbox
+            org.opencontainers.image.description=Offline sandbox that runs Flagprint generate.py scripts: Python, gcc, rustc, nasm, patchelf, upx
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: generator
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

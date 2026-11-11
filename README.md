@@ -1,137 +1,151 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
-    <img src="docs/logo-light.svg" alt="Flagprint" width="340">
+    <img src="docs/logo-light.svg" alt="Flagprint" width="320">
   </picture>
 </p>
 
-<p align="center"><b>Every team gets its own flag and its own files. A shared flag tells you who leaked it.</b></p>
+<p align="center"><b>Every team gets its own flag and its own files.<br>A shared flag tells you who leaked it.</b></p>
 
 <p align="center">
   <a href="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml"><img src="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <a href="https://github.com/rj-karan/ctfd-flagprint/releases/latest"><img src="https://img.shields.io/github/v/release/rj-karan/ctfd-flagprint?label=release" alt="latest release"></a>
   <img src="https://img.shields.io/badge/CTFd-3.8-blue" alt="CTFd 3.8">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License: Apache 2.0"></a>
-  <a href="https://github.com/rj-karan/ctfd-flagprint/releases/latest"><img src="https://img.shields.io/github/v/release/rj-karan/ctfd-flagprint" alt="Latest release"></a>
+  <a href="https://github.com/rj-karan/ctfd-flagprint/pkgs/container/flagprint-generator"><img src="https://img.shields.io/badge/ghcr.io-sandbox%20image-2496ED?logo=docker&logoColor=white" alt="sandbox image on ghcr.io"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="Apache 2.0"></a>
 </p>
 
-Flagprint is a [CTFd](https://github.com/CTFd/CTFd) plugin that stops flag sharing at its source. Each team gets a
-flag nobody else has, often inside a file built just for them. When Team B submits Team A's flag, Team B only sees
-"Incorrect". You see who copied it, whose flag it was, and when.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#create-a-per-team-challenge">Create a challenge</a> ·
+  <a href="#writing-generatepy">generate.py</a> ·
+  <a href="#admin-monitor">Admin monitor</a> ·
+  <a href="#compared-with-other-options">Compared with</a> ·
+  <a href="#development">Development</a>
+</p>
 
-<p align="center"><img src="docs/images/demo.gif" alt="A team pastes another team's flag, gets Incorrect, and the admin is alerted with who copied whose flag" width="900"></p>
+<br>
+
+<p align="center">
+  <img src="docs/images/demo.gif" alt="A team pastes another team's flag, sees Incorrect, and the admin is told who copied whose flag" width="880">
+</p>
+
+<br>
+
+Flagprint is a plugin for [CTFd](https://github.com/CTFd/CTFd). Each team gets a flag nobody else has, usually inside
+a file built just for them. When Team B submits Team A's flag, Team B sees a plain "Incorrect". You see who copied,
+whose flag it was, and when.
 
 ## Why
 
-In any CTF with prizes, someone pastes a flag into a group chat. With a single static flag you never find out.
-CTFd only offers per-user flags in its paid Enterprise edition, and only for hosted containers. Most challenges are
-files: an image, a pcap, a binary, a zip. Flagprint gives those per-team flags too.
+In any CTF with prizes, someone pastes a flag into a group chat. With one static flag per challenge you never find out.
+CTFd's own per-user flags are Enterprise-only and only for hosted containers, while most challenges are files: an
+image, a pcap, a binary, a zip. Flagprint gives those files per-team flags too, on the open-source CTFd you already run.
 
-## What it does
+## What you get
 
-- **Per-team flags.** Write a template like `flag{st3g0_l0v3s_y0u_{team}}`. Each team's `{team}` becomes a
-  12-character code, an HMAC of the challenge and team under a secret kept in your database. No flag table to fill in,
-  nothing to export and import.
-- **Per-team files, of any kind.**
-  - **Replace:** upload a file that contains a sample flag. Each team downloads a copy with their own flag in its
-    place. Works on text, binaries and pcaps, and inside zip archives.
-  - **Script:** upload a `generate.py`. It runs once per team in an offline, locked-down Docker sandbox and writes that
-    team's file. Use it for stego images, compiled crackmes, encrypted blobs, anything you can script.
-- **Variants** for challenges with a fixed answer (OSINT, trivia): each team gets one of several versions of the task.
-  Submitting another version's answer counts as sharing.
-- **Leak attribution.** A wrong submission that matches another team's flag is logged with both teams, the user, the
-  IP and the time. A pop-up alerts every admin page live.
-- **Admin monitor:** share alerts, every submission with "whose flag was this", a flag lookup, accounts sharing an IP,
-  and a per-challenge **Team flags** panel listing each team's flag, file, solve and sharing count.
-- **Regenerate** one team's flag, or everyone's, if a flag leaks. Their old flag stops working and their solve on that
-  challenge is reset.
-- **Hall of Shame** (optional, off by default): a public page listing caught teams, filled automatically or by hand.
-- **Quiet by default.** The challenge type shows up as `classic` and players never see the flag template. Install the
-  plugin under a neutral folder name and nothing a player can see mentions Flagprint.
+| | |
+|---|---|
+| **Per-team flags** | Write `flag{st3g0_l0v3s_y0u_{team}}`. Each team's `{team}` becomes a 12-character code, an HMAC of the challenge and the team. No flag table to fill in or keep in sync. |
+| **Per-team files** | **Replace:** upload a file holding a sample flag and each team downloads a copy with their own. Works on text, binaries, pcaps and inside zips. **Script:** upload a `generate.py` and it builds each team's file in an offline sandbox: stego images, compiled crackmes, encrypted blobs. |
+| **Variants** | For fixed-answer tasks (OSINT, trivia) each team gets one of several versions. Another version's answer counts as sharing. |
+| **Who leaked it** | A wrong submission that matches another team's flag is logged with both teams, the player, IP and time, and pops up on every admin page. |
+| **Admin monitor** | Share alerts, every submission with its owner, flag lookup, teams sharing an IP, an optional Hall of Shame. |
+| **Team flags panel** | On each challenge: every team's flag, their exact file, solve and sharing counts, and **Regenerate** when a flag leaks. |
+| **Quiet by default** | The type shows as `classic`, players never see the template, and under a neutral folder name nothing player-facing mentions Flagprint. |
 
 ## How it works
 
 ```
-flag template      flag{st3g0_l0v3s_y0u_{team}}
-team code          HMAC-SHA256(secret, "challenge_id:team_id")[:12]  ->  5f1c09a2be47
-Team A's flag      flag{st3g0_l0v3s_y0u_5f1c09a2be47}
+template       flag{st3g0_l0v3s_y0u_{team}}
+team code      HMAC-SHA256(secret, "challenge_id:team_id")[:12]   →  5f1c09a2be47
+Team A's flag  flag{st3g0_l0v3s_y0u_5f1c09a2be47}
 ```
 
 When a submission is wrong but fits the template, Flagprint checks the code against every team's. If it belongs to
-someone else, that's a share: logged for you, "Incorrect" for them.
+someone else, that's a share: logged for you, "Incorrect" for them. The secret lives in your database, so flags stay
+the same across restarts and don't depend on `SECRET_KEY`.
 
 ## Install
-
-Clone it into CTFd's plugins folder and restart CTFd:
 
 ```bash
 cd CTFd/CTFd/plugins
 git clone https://github.com/rj-karan/ctfd-flagprint flagprint
 ```
 
-The plugin creates its tables on startup. Open **Admin → Flagprint**, then create a challenge of type **classic**.
+Restart CTFd. The tables are created on startup. Open **Admin → Flagprint** and create a challenge of type
+**classic**. That's all you need for flag, replace and variants delivery.
 
-**Script delivery** also needs Docker on the CTFd host:
+<details>
+<summary><b>Script delivery</b> (generate.py) needs Docker</summary>
+
+<br>
+
+The sandbox image is published on GitHub Container Registry, so you pull it rather than build it:
 
 ```bash
-pip install -r CTFd/plugins/flagprint/requirements.txt      # the Python docker client
-docker build -t flagprint/generator:latest CTFd/plugins/flagprint/generator
+docker pull ghcr.io/rj-karan/flagprint-generator:latest
 ```
 
-The sandbox image has Python 3.12 with Pillow and PyCryptodome, gcc/g++ (including `-m32` and static musl builds),
-rustc, nasm, binutils, patchelf and upx. Without it, scripts run in plain `python:3.12-slim`. To use another image, set
-`FLAGPRINT_SANDBOX_IMAGE`.
+It has Python 3.12 with Pillow and PyCryptodome, gcc/g++ (including `-m32` and static musl builds), rustc, nasm,
+binutils, patchelf and upx. Without it, scripts run in plain `python:3.12-slim`. To use your own image, set
+`FLAGPRINT_SANDBOX_IMAGE`; to build this one yourself, `docker build -t flagprint/generator:latest generator`.
 
-With CTFd's `docker-compose.yml`, mount the Docker socket into the `ctfd` service and give it the socket's group:
+The CTFd process also needs the Python docker client (`requirements.txt`, installed automatically when CTFd's Docker
+image is built) and access to the Docker socket. With CTFd's `docker-compose.yml`, copy
+[`docs/docker-compose.override.yml`](docs/docker-compose.override.yml) next to it and run:
 
-```yaml
-services:
-  ctfd:
-    group_add:
-      - "${DOCKER_GID}"        # getent group docker | cut -d: -f3
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+```bash
+DOCKER_GID=$(getent group docker | cut -d: -f3) docker compose up -d --build
 ```
 
-CTFd's Dockerfile installs each plugin's `requirements.txt` when the image is built, so rebuild it after cloning.
+> Mounting the Docker socket gives CTFd control of the host's Docker. Only script delivery needs it; skip it otherwise.
 
-> **Mounting the Docker socket gives CTFd control of the host's Docker.** Only Flagprint's script delivery needs it.
-> If you only use flag, replace or variants delivery, skip it.
+</details>
 
-### Hide it from players
+<details>
+<summary><b>Hide it from players</b></summary>
+
+<br>
 
 Asset paths follow the folder name, and players can see those paths in the challenge API. Clone into a neutral name
-to keep the plugin invisible, so sharers get caught instead of warned:
+and the plugin becomes invisible, so sharers get caught rather than warned:
 
 ```bash
 git clone https://github.com/rj-karan/ctfd-flagprint classic
 ```
 
-Or name it openly and use it as a deterrent. Both work.
+Or keep the name and use it as a deterrent. Both work.
+
+</details>
 
 ## Create a per-team challenge
 
-1. **Admin → Challenges → New → classic.**
-2. Pick how teams get their flag:
+**Admin → Challenges → New → classic**, then choose how teams get their flag:
 
-   | Delivery | Use it for | What you upload |
-   |---|---|---|
-   | Replace | Files that hold the flag as-is: text, pcap, binary, zip | The file, containing the sample flag shown under the template |
-   | Script | Files that must be built: stego, crackmes, encrypted data | `generate.py`, plus an optional input file |
-   | Flag only | Services or instances that show the flag themselves | Nothing |
-   | Variants | Fixed answers: OSINT, trivia | Two or more task texts with their answers |
+| Delivery | Use it for | You upload |
+|---|---|---|
+| Replace | Files that hold the flag as-is: text, pcap, binary, zip | The file, containing the sample flag shown under the template |
+| Script | Files that must be built: stego, crackmes, encrypted data | `generate.py`, plus an optional input file |
+| Flag only | Services and instances that print the flag themselves | Nothing |
+| Variants | Fixed answers: OSINT, trivia | Two or more task texts with their answers |
 
-3. Write the flag template with `{team}` exactly once, e.g. `flag{n0t_y0ur_fl4g_{team}}`.
-4. Save. Script delivery test-runs your script before anything is saved, so a broken script never reaches players.
+Write the template with `{team}` exactly once, e.g. `flag{n0t_y0ur_fl4g_{team}}`, and save. Script delivery test-runs
+your script before anything is saved, so a broken script never reaches players.
 
-<img src="docs/images/script-form.png" alt="The per-team settings on a challenge's edit page" width="560">
+<p align="center">
+  <img src="docs/images/script-form.png" alt="The per-team settings on a challenge's edit page" width="620">
+</p>
 
 Players download their file from the challenge window as usual:
 
-<img src="docs/images/player-download.png" alt="A challenge window with the team's own evidence.zip download" width="420">
+<p align="center">
+  <img src="docs/images/player-download.png" alt="A challenge window with the team's own evidence.zip download" width="440">
+</p>
 
-### Writing generate.py
+## Writing generate.py
 
-Your script gets these environment variables and must write one file into `OUTPUT_DIR`:
+Your script gets four environment variables and writes one file into `OUTPUT_DIR`:
 
 | Variable | Value |
 |---|---|
@@ -143,37 +157,58 @@ Your script gets these environment variables and must write one file into `OUTPU
 It runs with no network, all capabilities dropped, 1 GB of memory and a 3-minute limit. Each team's file is built on
 their first download and cached. Two complete examples:
 
-- [`examples/stego_png.py`](examples/stego_png.py): hides the flag in the low bits of a cover image
-- [`examples/rev_binary.py`](examples/rev_binary.py): compiles a crackme with the flag XOR-encoded inside
+- [`examples/stego_png.py`](examples/stego_png.py) hides the flag in the low bits of a cover image.
+- [`examples/rev_binary.py`](examples/rev_binary.py) compiles a crackme with the flag XOR-encoded inside.
 
 ## Admin monitor
 
-<img src="docs/images/share-alerts.png" alt="Share alerts: who submitted whose flag, on which challenge, with IP and time">
+<p align="center">
+  <img src="docs/images/share-alerts.png" alt="Share alerts: who submitted whose flag, on which challenge, with IP and time">
+</p>
 
-**Admin → Flagprint** has:
+**Admin → Flagprint** has six tabs:
 
-- **Share alerts:** every time a team submitted another team's flag
-- **All submissions:** to per-team challenges, with whose flag each one was
-- **Flag lookup:** paste a flag from a writeup or a Discord screenshot and see which team it was issued to
-- **Shared IPs:** IPs used by more than one team
-- **Hall of Shame:** turn the public page on or off, auto-add caught teams, add or hide entries by hand
-- **Per-team challenges:** every challenge using per-team flags
+- **Share alerts:** every time a team submitted another team's flag.
+- **All submissions** to per-team challenges, each with whose flag it was.
+- **Flag lookup:** paste a flag from a writeup or a Discord screenshot and see which team it was issued to.
+- **Shared IPs:** addresses used by more than one team. A lead, not proof.
+- **Hall of Shame:** the public page on or off, auto-add caught teams, add or hide entries by hand.
+- **Per-team challenges:** every challenge that uses per-team flags.
 
-<img src="docs/images/flag-lookup.png" alt="Flag lookup shows which team a flag was issued to">
+<p align="center">
+  <img src="docs/images/flag-lookup.png" alt="Flag lookup shows which team a flag was issued to">
+</p>
 
-Each per-team challenge's admin page also gets a **Team flags** panel: every team's flag, a download of their exact
-file, solve status, how often their flag leaked or they used someone else's, and **Regenerate**.
+Each per-team challenge's edit page gets a **Team flags** panel: every team's flag, a download of their exact file,
+solve status, how often their flag leaked or they used someone else's, and **Regenerate**, which gives one team (or
+everyone) a new flag and resets their solve on that challenge.
 
-<img src="docs/images/team-flags.png" alt="Team flags panel: each team's flag, solve, leaked and copied counts, file download and Regenerate">
+<p align="center">
+  <img src="docs/images/team-flags.png" alt="Team flags panel: each team's flag, solve, leaked and copied counts, file download and Regenerate">
+</p>
 
-New shares pop up on every admin page while you work:
+New shares pop up on whatever admin page you're on:
 
-<img src="docs/images/alert-toast.png" alt="Flag sharing caught: Root Cause submitted Null Pointers' flag on Exfil" width="420">
+<p align="center">
+  <img src="docs/images/alert-toast.png" alt="Flag sharing caught: Root Cause submitted Null Pointers' flag on Exfil" width="440">
+</p>
+
+## Compared with other options
+
+| | Per-team flags | Per-team **files** | Names the leaker | CTFd 3.8 | Free |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Flagprint** | ✓ | ✓ any file type, or a script | ✓ | ✓ | ✓ |
+| CTFd Application Target | ✓ | containers only | ✓ | ✓ | Enterprise |
+| [ctfd-warden](https://github.com/0xZyyz/ctfd-warden) | needs them from elsewhere | – | ✓ | ✓ | ✓ |
+| Container instancers ([CTFd-Docker-Plugin](https://github.com/phannhat17/CTFd-Docker-Plugin), [RedHerring](https://github.com/Isotech42/CTFd-RedHerring)) | ✓ | containers only | some | varies | ✓ |
+| [CTFd_unique_challenges](https://github.com/Gerrit0/CTFd_unique_challenges) | ✓ | text only | – | 2.2 | ✓ |
+
+Flagprint and Warden go well together: Flagprint makes the flags unique and attributes leaks, Warden watches for bots,
+shared accounts and suspicious solve speed.
 
 ## Works with other plugins
 
-Plugins that issue their own per-team flags, such as a container instancer, can join the monitor, flag lookup and
-share logging:
+An instancer or any plugin that issues its own per-team flags can join the monitor, lookup and share logging:
 
 ```python
 from CTFd.plugins.flagprint import ON_REGENERATE, PER_TEAM_SOURCES, TEAM_FLAG_EXTRAS, record_if_shared
@@ -188,19 +223,16 @@ ON_REGENERATE.append(lambda challenge, account_ids: None)   # e.g. stop instance
 # and call record_if_shared(user, team, challenge, request) from your challenge type's fail().
 ```
 
-For behaviour signals Flagprint doesn't cover (bots, AI agents, shared accounts, solve speed), it pairs well with
-[ctfd-warden](https://github.com/0xZyyz/ctfd-warden), which detects sharing but needs unique flags from elsewhere.
-
 ## Limits
 
-Flagprint catches **flags** that move between teams. It can't stop a team from sharing a writeup or a solve script
-that each team then runs on its own file. For that, make the per-team files differ in more than the flag: a random
-key, offset or layout in `generate.py`.
+Flagprint catches **flags** that move between teams. It can't stop a team sharing a writeup or a solve script that
+each team then runs on its own file. For that, make the files differ in more than the flag: a random key, offset or
+layout chosen in `generate.py`.
 
 ## Compatibility
 
-CTFd 3.8.x, in teams mode and users mode. Used in production on MariaDB; tests run on SQLite. PostgreSQL should work but is untested. Tested in CI against CTFd 3.8.7 and
-3.8.9.
+CTFd 3.8.x, teams mode and users mode. CI runs the suite against CTFd 3.8.7 and 3.8.9 on SQLite; MariaDB is used in
+production. PostgreSQL should work but is untested.
 
 ## Development
 
@@ -213,14 +245,13 @@ cp CTFd/plugins/flagprint/tests/test_flagprint.py tests/flagprint/
 python -m pytest tests/flagprint -p no:randomly
 ```
 
-Tests that run `generate.py` need Docker and are skipped without it.
-
-Bug reports and pull requests are welcome.
+Tests that run `generate.py` need Docker and are skipped without it. See [CONTRIBUTING.md](CONTRIBUTING.md) for how
+to send changes and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## Support
 
-If Flagprint helped your event, star the repo so other organizers can find it, and tell us how it went in
-[Discussions](https://github.com/rj-karan/ctfd-flagprint/discussions) or an issue.
+If Flagprint helped your event, star the repo so other organizers find it, and tell us how it went in
+[Discussions](https://github.com/rj-karan/ctfd-flagprint/discussions).
 
 ## License
 
