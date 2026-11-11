@@ -37,7 +37,8 @@
     const title = document.createElement("strong");
     title.textContent = "Flag sharing caught";
     const body = document.createElement("div");
-    body.textContent = `${event.submitter} submitted ${event.owner}'s flag on ${event.challenge}`;
+    const owner = /s$/i.test(event.owner) ? `${event.owner}'` : `${event.owner}'s`;  // "Null Pointers'", not "Pointers's"
+    body.textContent = `${event.submitter} submitted ${owner} flag on ${event.challenge}`;
     card.append(title, body);
     stack().appendChild(card);
     setTimeout(() => card.remove(), 20000);

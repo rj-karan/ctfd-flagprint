@@ -84,7 +84,7 @@
     try {
       await request(`${root}/containers/api/kill`, { instance_id: instanceId });
       await load();
-      say(`Stopped ${name}'s instance.`);
+      say(`Stopped the instance of ${name}.`);
     } catch (error) {
       say(error.message, true);
     }

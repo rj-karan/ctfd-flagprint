@@ -1,14 +1,24 @@
-# Flagprint
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+    <img src="docs/logo-light.svg" alt="Flagprint" width="340">
+  </picture>
+</p>
 
-**Every team gets its own flag and its own files. A shared flag tells you who leaked it.**
+<p align="center"><b>Every team gets its own flag and its own files. A shared flag tells you who leaked it.</b></p>
+
+<p align="center">
+  <a href="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml"><img src="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <img src="https://img.shields.io/badge/CTFd-3.8-blue" alt="CTFd 3.8">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/rj-karan/ctfd-flagprint/releases/latest"><img src="https://img.shields.io/github/v/release/rj-karan/ctfd-flagprint" alt="Latest release"></a>
+</p>
 
 Flagprint is a [CTFd](https://github.com/CTFd/CTFd) plugin that stops flag sharing at its source. Each team gets a
 flag nobody else has, often inside a file built just for them. When Team B submits Team A's flag, Team B only sees
 "Incorrect". You see who copied it, whose flag it was, and when.
 
-[![tests](https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml/badge.svg)](https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml)
-![CTFd 3.8](https://img.shields.io/badge/CTFd-3.8-blue)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
+<p align="center"><img src="docs/images/demo.gif" alt="A team pastes another team's flag, gets Incorrect, and the admin is alerted with who copied whose flag" width="900"></p>
 
 ## Why
 
@@ -113,7 +123,11 @@ Or name it openly and use it as a deterrent. Both work.
 3. Write the flag template with `{team}` exactly once, e.g. `flag{n0t_y0ur_fl4g_{team}}`.
 4. Save. Script delivery test-runs your script before anything is saved, so a broken script never reaches players.
 
-Players download their file from the challenge window as usual.
+<img src="docs/images/script-form.png" alt="The per-team settings on a challenge's edit page" width="560">
+
+Players download their file from the challenge window as usual:
+
+<img src="docs/images/player-download.png" alt="A challenge window with the team's own evidence.zip download" width="420">
 
 ### Writing generate.py
 
@@ -134,6 +148,8 @@ their first download and cached. Two complete examples:
 
 ## Admin monitor
 
+<img src="docs/images/share-alerts.png" alt="Share alerts: who submitted whose flag, on which challenge, with IP and time">
+
 **Admin → Flagprint** has:
 
 - **Share alerts:** every time a team submitted another team's flag
@@ -143,8 +159,16 @@ their first download and cached. Two complete examples:
 - **Hall of Shame:** turn the public page on or off, auto-add caught teams, add or hide entries by hand
 - **Per-team challenges:** every challenge using per-team flags
 
+<img src="docs/images/flag-lookup.png" alt="Flag lookup shows which team a flag was issued to">
+
 Each per-team challenge's admin page also gets a **Team flags** panel: every team's flag, a download of their exact
 file, solve status, how often their flag leaked or they used someone else's, and **Regenerate**.
+
+<img src="docs/images/team-flags.png" alt="Team flags panel: each team's flag, solve, leaked and copied counts, file download and Regenerate">
+
+New shares pop up on every admin page while you work:
+
+<img src="docs/images/alert-toast.png" alt="Flag sharing caught: Root Cause submitted Null Pointers' flag on Exfil" width="420">
 
 ## Works with other plugins
 
@@ -192,6 +216,11 @@ python -m pytest tests/flagprint -p no:randomly
 Tests that run `generate.py` need Docker and are skipped without it.
 
 Bug reports and pull requests are welcome.
+
+## Support
+
+If Flagprint helped your event, star the repo so other organizers can find it, and tell us how it went in
+[Discussions](https://github.com/rj-karan/ctfd-flagprint/discussions) or an issue.
 
 ## License
 

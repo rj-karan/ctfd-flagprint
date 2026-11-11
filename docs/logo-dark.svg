@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 72" width="340" height="72" role="img" aria-label="Flagprint">
+  <g transform="translate(0 4)">
+    <rect fill="#f4f4f5" x="11" y="6" width="4" height="54" rx="2"/>
+    <path d="M15 8h40l-8 13 8 13H15z" fill="#d6261b"/>
+    <g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+      <path d="M21 29c0-7 4-13 10-13s9 4 9 9"/>
+      <path d="M26 29c0-5 2-8 5-8s4 2 4 5"/>
+      <path d="M31 29v-3"/>
+      <path d="M21 13.5c3-2 6-3 10-3 5 0 9 2 12 6"/>
+    </g>
+  </g>
+  <text fill="#f4f4f5" x="74" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="42" font-weight="700" letter-spacing="-1">Flagprint</text>
+</svg>
