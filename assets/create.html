@@ -1,0 +1,17 @@
+{% extends "admin/challenges/create.html" %}
+
+{% block header %}
+<div class="alert alert-secondary" role="alert">
+	Every team gets its own flag, so a copied flag doesn't work and is reported to you.
+	Fill in the per-team settings below; there's no flag to add in the next step.
+</div>
+{% endblock %}
+
+{% block value %}
+{{ super() }}
+{% with challenge=None %}{% include flagprint_assets ~ "_fields.html" %}{% endwith %}
+{% endblock %}
+
+{% block type %}
+<input type="hidden" value="classic" name="type" id="chaltype">
+{% endblock %}

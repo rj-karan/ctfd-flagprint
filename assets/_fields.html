@@ -1,0 +1,84 @@
+{# Per-team settings, shared by the create and update forms. `challenge` is None when creating.
+   Files are read in the browser and sent with the form; nothing is saved until every check passes. #}
+{% set state = flagprint_form_state(challenge) if challenge and flagprint_form_state is defined else {} %}
+{% set mode = challenge.delivery if challenge else 'replace' %}
+<div class="cl-form" data-root="{{ request.script_root }}" data-challenge="{{ challenge.id if challenge else '' }}">
+
+	<div class="form-group">
+		<label>How teams get their flag</label>
+		<select class="custom-select" name="delivery" id="cl-delivery">
+			<option value="replace" {{ 'selected' if mode == 'replace' }}>Replace: a file that contains the sample flag</option>
+			<option value="script" {{ 'selected' if mode == 'script' }}>Script: generate.py makes each team's file</option>
+			<option value="flag" {{ 'selected' if mode == 'flag' }}>Flag only: no file (a service shows the flag)</option>
+			<option value="variants" {{ 'selected' if mode == 'variants' }}>Variants: fixed answers, e.g. OSINT</option>
+		</select>
+	</div>
+
+	<div class="form-group" data-cl-show="replace script flag">
+		<label>Flag template<br><small class="form-text text-muted">
+			Write <code>{team}</code> where each team's code goes, e.g. <code>flag{st3g0_l0v3s_y0u_{team}}</code>.
+		</small></label>
+		<input type="text" class="form-control" name="flag_template" id="cl-template" maxlength="200"
+		       value="{{ challenge.flag_template if challenge else '' }}" placeholder="flag{your_flag_text_{team}}">
+		<small class="form-text" id="cl-sample"></small>
+	</div>
+
+	{# Replace ---------------------------------------------------------------------------- #}
+	<div class="form-group" data-cl-show="replace">
+		<label>File with the sample flag<br><small class="form-text text-muted">
+			Put the sample flag shown above into your file: text, binary, pcap or files inside a zip. Each team downloads
+			a copy with their own flag in its place. Don't compress or encrypt the flag itself.
+		</small></label>
+		{% if state.source %}
+			<p class="mb-1">Current file: <b>{{ state.source }}</b>, sample flag found {{ state.occurrences }} time{{ '' if state.occurrences == 1 else 's' }}. Choose a new file only to replace it.</p>
+		{% endif %}
+		<input type="file" class="form-control-file" data-cl-upload="upload_source">
+		<input type="hidden" name="upload_source">
+		<small class="form-text" data-cl-status="upload_source"></small>
+	</div>
+
+	{# Script ----------------------------------------------------------------------------- #}
+	<div data-cl-show="script">
+		<div class="form-group">
+			<label>generate.py<br><small class="form-text text-muted">
+				Runs once per team in a locked, offline sandbox with Python 3.12 (plus Pillow, PyCryptodome), gcc/g++ (also -m32, -static), rustc, nasm, strip, patchelf and upx; up to 3 minutes and 1 GB.
+				It gets <code>FLAG</code>, <code>INPUT</code>, <code>OUTPUT_DIR</code> and <code>OUTPUT_NAME</code> and must write one file into <code>OUTPUT_DIR</code>.
+				It is test-run when you save.
+			</small></label>
+			{% if state.has_script %}<p class="mb-1">Current: <b>generate.py</b> uploaded. Choose a new one only to replace it.</p>{% endif %}
+			<input type="file" class="form-control-file" accept=".py" data-cl-upload="upload_script">
+			<input type="hidden" name="upload_script">
+			<small class="form-text" data-cl-status="upload_script"></small>
+		</div>
+		<div class="form-group">
+			<label>Input file (optional)<br><small class="form-text text-muted">A cover image, audio or binary your script reads from <code>INPUT</code>.</small></label>
+			{% if state.input %}
+				<p class="mb-1">Current: <b>{{ state.input }}</b>
+				<label class="ml-3 mb-0 font-weight-normal"><input type="checkbox" name="remove_input" value="1"> remove it</label></p>
+			{% endif %}
+			<input type="file" class="form-control-file" data-cl-upload="upload_input">
+			<input type="hidden" name="upload_input">
+			<small class="form-text" data-cl-status="upload_input"></small>
+		</div>
+		<div class="form-group">
+			<label>Download name<br><small class="form-text text-muted">The file name players download, e.g. <code>image.png</code>.</small></label>
+			<input type="text" class="form-control" name="output_name" maxlength="120"
+			       value="{{ challenge.filename if challenge and challenge.delivery == 'script' and challenge.filename else '' }}" placeholder="image.png">
+		</div>
+	</div>
+
+	{# Variants --------------------------------------------------------------------------- #}
+	<div class="form-group" data-cl-show="variants">
+		<label>Variants<br><small class="form-text text-muted">
+			Each team is given one variant and sees only its task. Answers ignore case and extra spaces.
+			Submitting another variant's answer counts as sharing. Add at least two.
+		</small></label>
+		<div id="cl-variants"></div>
+		<button type="button" class="btn btn-outline-secondary btn-sm" id="cl-add-variant">Add variant</button>
+		<input type="hidden" name="variants_json" id="cl-variants-json" value="{{ (challenge.variants | list if challenge else []) | tojson | forceescape }}">
+	</div>
+
+	{% if challenge %}
+	<p class="text-muted small">Every team's flag, their file, solves and sharing are in <b>Team flags</b> at the top of this page.</p>
+	{% endif %}
+</div>

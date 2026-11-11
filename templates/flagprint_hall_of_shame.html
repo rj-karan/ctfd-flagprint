@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="jumbotron">
+    <div class="container">
+      <h1>{% trans %}Hall of Shame{% endtrans %}</h1>
+      <p class="text-muted mb-0">{% trans %}Teams caught submitting a flag that belongs to someone else.{% endtrans %}</p>
+    </div>
+  </div>
+  <div class="container">
+    {% if preview %}
+      <div class="alert alert-warning">{% trans %}Preview: this page is switched off, so only admins can see it. Turn it on in Admin → Flagprint → Hall of Shame.{% endtrans %}</div>
+    {% endif %}
+
+    {% if entries %}
+      <table class="table table-striped">
+        <thead>
+          <tr><th>#</th><th>{% trans %}Name{% endtrans %}</th><th>{% trans %}Reason{% endtrans %}</th><th>{% trans %}When{% endtrans %}</th></tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td><b>{{ account_label(entry.account_id) }}</b></td>
+              <td>{{ entry.reason }}</td>
+              <td><time datetime="{{ entry.date.isoformat() }}Z">{{ entry.date.strftime('%b %d, %H:%M') }} UTC</time></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-muted text-center py-5">{% trans %}Nobody here yet.{% endtrans %}</p>
+    {% endif %}
+  </div>
+{% endblock %}

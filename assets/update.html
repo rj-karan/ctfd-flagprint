@@ -1,0 +1,6 @@
+{% extends "admin/challenges/update.html" %}
+
+{% block value %}
+{{ super() }}
+{% include flagprint_assets ~ "_fields.html" %}
+{% endblock %}

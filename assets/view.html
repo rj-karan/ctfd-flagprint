@@ -1,0 +1,17 @@
+{% extends "challenge.html" %}
+
+{# The download sits in the description block because every theme has one; CTFd's core theme has no files block. #}
+{% block description %}
+  {% set personal = flagprint_view(challenge) %}
+  {{ personal.description or challenge.html }}
+  {% if personal.download %}
+    <span class="flagprint-file d-block mt-3">
+      <a class="btn btn-info btn-file mb-1 px-3" href="{{ personal.download.url }}" title="{{ personal.download.name }}" download>
+        <i class="fas fa-download"></i> <small>{{ personal.download.name }}</small>
+      </a>
+    </span>
+  {% endif %}
+  {% if personal.preview %}
+    <span class="d-block text-muted mt-3"><small>Admin preview: players see their own file or variant here.</small></span>
+  {% endif %}
+{% endblock %}

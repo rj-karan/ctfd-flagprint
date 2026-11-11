@@ -1,0 +1,200 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+	<div class="container">
+		<h1>Flagprint</h1>
+	</div>
+</div>
+
+<div class="container-fluid px-4">
+	<ul class="nav nav-tabs mb-3">
+		{% for key, label in [('alerts', 'Share alerts'), ('submissions', 'All submissions'), ('lookup', 'Flag lookup'), ('ips', 'Shared IPs'), ('shame', 'Hall of Shame'), ('challenges', 'Per-team challenges')] %}
+		<li class="nav-item">
+			<a class="nav-link {{ 'active' if section == key }}" href="{{ url_for('flagprint.monitor', section=key, challenge_id=challenge_id) }}">
+				{{ label }}{% if key == 'alerts' and alerts %} <span class="badge badge-danger">{{ alerts|length }}</span>{% endif %}
+			</a>
+		</li>
+		{% endfor %}
+	</ul>
+
+	{% if section in ('alerts', 'submissions') %}
+	<form class="form-inline mb-3" method="get">
+		<input type="hidden" name="section" value="{{ section }}">
+		<select class="custom-select mr-2" name="challenge_id" onchange="this.form.submit()">
+			<option value="">All per-team challenges</option>
+			{% for c in per_team %}<option value="{{ c.id }}" {{ 'selected' if challenge_id == c.id }}>{{ c.category }} / {{ c.name }}</option>{% endfor %}
+		</select>
+	</form>
+	{% endif %}
+
+	{% if section == 'alerts' %}
+		<p class="text-muted">A row appears when a {{ 'team' if teams_mode else 'user' }} submits a flag (or variant answer) that was issued to someone else. The submission was rejected.</p>
+		{% if alerts %}
+		<table class="table table-striped">
+			<thead><tr><th>Time (UTC)</th><th>Challenge</th><th>Submitted by</th><th>Flag belongs to</th><th>Player</th><th>IP</th><th>Submitted flag</th></tr></thead>
+			<tbody>
+			{% for event in alerts %}
+				<tr>
+					<td class="text-nowrap">{{ event.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+					<td>{{ event.challenge.category }} / {{ event.challenge.name }}</td>
+					<td><a href="{{ account_url(event.submitter_account_id) }}">{{ account_label(event.submitter_account_id) }}</a></td>
+					<td>
+						{% if event.owner_account_id %}<a href="{{ account_url(event.owner_account_id) }}">{{ account_label(event.owner_account_id) }}</a>
+						{% else %}variant #{{ event.variant + 1 }}{% endif %}
+					</td>
+					<td><a href="{{ url_for('admin.users_detail', user_id=event.user_id) }}">{{ event.user.name }}</a></td>
+					<td><code>{{ event.ip }}</code></td>
+					<td><code>{{ event.provided }}</code></td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+		{% else %}
+		<p>No shared flags have been submitted.</p>
+		{% endif %}
+
+	{% elif section == 'submissions' %}
+		<p class="text-muted">Latest 500 submissions to per-team challenges. "Flag issued to" shows whose flag was typed in.</p>
+		<table class="table table-striped">
+			<thead><tr><th>Time (UTC)</th><th>Challenge</th><th>Submitted by</th><th>Result</th><th>Flag issued to</th><th>IP</th><th>Submitted</th></tr></thead>
+			<tbody>
+			{% for item in submissions %}
+				{% set row = item.row %}
+				{% set account_id = row.team_id if teams_mode else row.user_id %}
+				<tr class="{{ 'table-danger' if item.match and item.match.owner_account_id and item.match.owner_account_id != account_id }}">
+					<td class="text-nowrap">{{ row.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+					<td>{{ item.challenge.category }} / {{ item.challenge.name }}</td>
+					<td><a href="{{ account_url(account_id) }}">{{ account_label(account_id) }}</a></td>
+					<td>{{ 'correct' if row.type == 'correct' else 'wrong' }}</td>
+					<td>
+						{% if not item.match %}—
+						{% elif item.match.owner_account_id %}{{ 'own flag' if item.match.owner_account_id == account_id else account_label(item.match.owner_account_id) }}
+						{% else %}variant #{{ item.match.variant + 1 }}{% endif %}
+					</td>
+					<td><code>{{ row.ip }}</code></td>
+					<td><code>{{ row.provided }}</code></td>
+				</tr>
+			{% else %}
+				<tr><td colspan="7">No submissions yet.</td></tr>
+			{% endfor %}
+			</tbody>
+		</table>
+
+	{% elif section == 'lookup' %}
+		<form class="mb-4" method="get" style="max-width: 760px">
+			<input type="hidden" name="section" value="lookup">
+			<div class="form-group">
+				<label>Flag or answer</label>
+				<input class="form-control" name="flag" value="{{ request.args.get('flag', '') }}" placeholder="flag{...}" required>
+			</div>
+			<div class="form-group">
+				<label>Challenge</label>
+				<select class="custom-select" name="challenge_id">
+					<option value="">Search all per-team challenges</option>
+					{% for c in per_team %}<option value="{{ c.id }}" {{ 'selected' if challenge_id == c.id }}>{{ c.category }} / {{ c.name }}</option>{% endfor %}
+				</select>
+			</div>
+			<button class="btn btn-primary">Find owner</button>
+		</form>
+		{% if lookup %}
+			{% if lookup.match and lookup.match.owner_account_id %}
+				<div class="alert alert-info">Issued to <a href="{{ account_url(lookup.match.owner_account_id) }}"><b>{{ account_label(lookup.match.owner_account_id) }}</b></a> for <b>{{ lookup.challenge.category }} / {{ lookup.challenge.name }}</b>{% if lookup.match.retired %}. This is an <b>old flag</b>: it was regenerated, so it no longer works{% endif %}.</div>
+			{% elif lookup.match %}
+				<div class="alert alert-info">This is the answer to variant #{{ lookup.match.variant + 1 }} of <b>{{ lookup.challenge.name }}</b>.</div>
+			{% else %}
+				<div class="alert alert-warning">This flag was not issued to anyone.</div>
+			{% endif %}
+		{% endif %}
+
+	{% elif section == 'ips' %}
+		<p class="text-muted">IP addresses used by players from more than one {{ 'team' if teams_mode else 'account' }}. Shared networks (a campus or venue Wi-Fi) also show up here, so treat this as a lead, not proof.</p>
+		<table class="table table-striped">
+			<thead><tr><th>IP</th><th>{{ 'Teams' if teams_mode else 'Users' }}</th></tr></thead>
+			<tbody>
+			{% for item in shared_ips %}
+				<tr><td><code>{{ item.ip }}</code></td><td>{{ item.accounts | join(', ') }}</td></tr>
+			{% else %}
+				<tr><td colspan="2">No shared IPs.</td></tr>
+			{% endfor %}
+			</tbody>
+		</table>
+
+	{% elif section == 'shame' %}
+		{% with messages = get_flashed_messages(with_categories=true) %}
+			{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}
+		{% endwith %}
+		<div class="card mb-4"><div class="card-body">
+			<h5>Settings</h5>
+			<form method="post" action="{{ url_for('flagprint.shame_admin') }}">
+				<input type="hidden" name="nonce" value="{{ Session.nonce }}"><input type="hidden" name="action" value="settings">
+				<div class="custom-control custom-switch mb-2">
+					<input type="checkbox" class="custom-control-input" id="shame-enabled" name="enabled" {{ 'checked' if shame_enabled }}>
+					<label class="custom-control-label" for="shame-enabled"><b>Show the Hall of Shame</b>: public page at <a href="{{ url_for('flagprint.hall_of_shame') }}">/hall-of-shame</a> and a link in the site menu</label>
+				</div>
+				<div class="custom-control custom-switch mb-3">
+					<input type="checkbox" class="custom-control-input" id="shame-auto" name="auto" {{ 'checked' if shame_auto }}>
+					<label class="custom-control-label" for="shame-auto"><b>Add automatically</b>: a team that submits another team's flag is listed (once per challenge)</label>
+				</div>
+				<button class="btn btn-primary">Save settings</button>
+				<span class="text-muted ml-2">Page is currently <b>{{ 'on' if shame_enabled else 'off' }}</b>. Admins can preview it while it is off.</span>
+			</form>
+		</div></div>
+
+		<div class="card mb-4"><div class="card-body">
+			<h5>Add a team</h5>
+			<form method="post" action="{{ url_for('flagprint.shame_admin') }}" class="form-row align-items-end">
+				<input type="hidden" name="nonce" value="{{ Session.nonce }}"><input type="hidden" name="action" value="add">
+				<div class="col-md-4"><label>{{ 'Team' if teams_mode else 'User' }}</label>
+					<select class="custom-select" name="account_id" required>
+						{% for account in accounts %}<option value="{{ account.id }}">{{ account.name }}</option>{% endfor %}
+					</select></div>
+				<div class="col-md-6"><label>Reason (shown publicly; keep it vague so players never learn how cheating is detected)</label>
+					<input class="form-control" name="reason" maxlength="300" placeholder="Got caught on web-login" required></div>
+				<div class="col-md-2"><button class="btn btn-primary w-100">Add</button></div>
+			</form>
+		</div></div>
+
+		<table class="table table-striped">
+			<thead><tr><th>Date (UTC)</th><th>{{ 'Team' if teams_mode else 'User' }}</th><th>Reason</th><th>Source</th><th>Shown</th><th></th></tr></thead>
+			<tbody>
+			{% for entry in shame %}
+				<tr>
+					<td class="text-nowrap">{{ entry.date.strftime('%Y-%m-%d %H:%M') }}</td>
+					<td><a href="{{ account_url(entry.account_id) }}">{{ account_label(entry.account_id) }}</a></td>
+					<td>{{ entry.reason }}</td>
+					<td>{{ entry.source }}</td>
+					<td>{{ 'yes' if entry.visible else 'hidden' }}</td>
+					<td class="text-nowrap">
+						<form method="post" action="{{ url_for('flagprint.shame_admin') }}" class="d-inline">
+							<input type="hidden" name="nonce" value="{{ Session.nonce }}"><input type="hidden" name="entry_id" value="{{ entry.id }}">
+							<button class="btn btn-sm btn-outline-secondary" name="action" value="toggle">{{ 'Hide' if entry.visible else 'Show' }}</button>
+							<button class="btn btn-sm btn-outline-danger" name="action" value="delete">Remove</button>
+						</form>
+					</td>
+				</tr>
+			{% else %}
+				<tr><td colspan="6">Nobody is on the Hall of Shame.</td></tr>
+			{% endfor %}
+			</tbody>
+		</table>
+
+	{% elif section == 'challenges' %}
+		<table class="table table-striped">
+			<thead><tr><th>Challenge</th><th>Kind</th><th>Flag template</th><th></th></tr></thead>
+			<tbody>
+			{% for c in per_team %}
+				<tr>
+					<td>{{ c.category }} / {{ c.name }}</td>
+					<td>{{ 'instance' if c.type == 'container' else c.delivery }}</td>
+					<td><code>{{ c.flag_template or '—' }}</code></td>
+					<td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.challenges_detail', challenge_id=c.id) }}">Team flags</a></td>
+				</tr>
+			{% else %}
+				<tr><td colspan="4">No per-team challenges yet. Create one of type "classic", or a "container" challenge with a per-team flag.</td></tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	{% endif %}
+</div>
+{% endblock %}

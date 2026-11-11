@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ctfd: ["3.8.7", "3.8.9"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: flagprint
+
+      - uses: actions/checkout@v4
+        with:
+          repository: CTFd/CTFd
+          ref: ${{ matrix.ctfd }}
+          path: ctfd
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ctfd/requirements.txt
+
+      - name: Install CTFd and the plugin
+        run: |
+          pip install -r ctfd/requirements.txt -r flagprint/requirements.txt pytest
+          cp -r flagprint ctfd/CTFd/plugins/flagprint
+          mkdir -p ctfd/tests/flagprint
+          touch ctfd/tests/flagprint/__init__.py
+          cp flagprint/tests/test_flagprint.py ctfd/tests/flagprint/
+
+      - name: Build the generator sandbox
+        run: docker build -t flagprint/generator:latest flagprint/generator
+
+      - name: Run tests
+        working-directory: ctfd
+        run: python -m pytest tests/flagprint -v -p no:randomly -W ignore
