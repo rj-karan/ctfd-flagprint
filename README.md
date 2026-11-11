@@ -7,6 +7,8 @@
 
 <p align="center"><b>Every team gets its own flag and its own files.<br>A shared flag tells you who leaked it.</b></p>
 
+<p align="center">An anti flag-sharing plugin for CTFd: unique flags per team, per-team challenge files,<br>and shared-flag detection that names the leaker.</p>
+
 <p align="center">
   <a href="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml"><img src="https://github.com/rj-karan/ctfd-flagprint/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <a href="https://github.com/rj-karan/ctfd-flagprint/releases/latest"><img src="https://img.shields.io/github/v/release/rj-karan/ctfd-flagprint?label=release" alt="latest release"></a>
@@ -201,6 +203,7 @@ New shares pop up on whatever admin page you're on:
 | CTFd Application Target | ✓ | containers only | ✓ | ✓ | Enterprise |
 | [ctfd-warden](https://github.com/0xZyyz/ctfd-warden) | needs them from elsewhere | – | ✓ | ✓ | ✓ |
 | Container instancers ([CTFd-Docker-Plugin](https://github.com/phannhat17/CTFd-Docker-Plugin), [RedHerring](https://github.com/Isotech42/CTFd-RedHerring)) | ✓ | containers only | some | varies | ✓ |
+| [ctfd-dynamic-flag](https://github.com/defojeco/ctfd-dynamic-flag) | ✓ hashed | – | – | ✓ | ✓ |
 | [CTFd_unique_challenges](https://github.com/Gerrit0/CTFd_unique_challenges) | ✓ | text only | – | 2.2 | ✓ |
 
 Flagprint and Warden go well together: Flagprint makes the flags unique and attributes leaks, Warden watches for bots,
