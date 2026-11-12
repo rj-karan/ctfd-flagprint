@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `docs/GENERATE.md`: the generate.py contract, six rules, and a copy-paste prompt for writing the script with an
+  AI assistant from an existing challenge file
+- `tools/try_generate.py` runs a script locally or in the sandbox image and warns when the flag is visible in the output
+- `examples/forensics_layers.py`: a harder, standard-library-only example with a per-team key
+- Pull request template, Dependabot for Actions, protected `main` with required CI
+
 ## 1.1.0 (2026-11-11)
 
 - The sandbox image is published as `ghcr.io/rj-karan/flagprint-generator`; the plugin uses it by default, then a
