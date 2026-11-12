@@ -157,10 +157,16 @@ Your script gets four environment variables and writes one file into `OUTPUT_DIR
 | `OUTPUT_NAME` | The download name you chose, e.g. `image.png` |
 
 It runs with no network, all capabilities dropped, 1 GB of memory and a 3-minute limit. Each team's file is built on
-their first download and cached. Two complete examples:
+their first download and cached. Three complete examples:
 
 - [`examples/stego_png.py`](examples/stego_png.py) hides the flag in the low bits of a cover image.
 - [`examples/rev_binary.py`](examples/rev_binary.py) compiles a crackme with the flag XOR-encoded inside.
+- [`examples/forensics_layers.py`](examples/forensics_layers.py) builds a zip with a log and a SQLite database, the
+  flag three layers down behind a per-team key.
+
+**[Writing generate.py](docs/GENERATE.md)** has the full contract, the six rules that keep scripts working for a
+thousand teams, and a copy-paste prompt for letting an AI assistant write the script from your existing challenge
+file. Try a script before uploading with `python tools/try_generate.py generate.py`.
 
 ## Admin monitor
 

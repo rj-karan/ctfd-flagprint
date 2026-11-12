@@ -43,7 +43,7 @@
 			<label>generate.py<br><small class="form-text text-muted">
 				Runs once per team in a locked, offline sandbox with Python 3.12 (plus Pillow, PyCryptodome), gcc/g++ (also -m32, -static), rustc, nasm, strip, patchelf and upx; up to 3 minutes and 1 GB.
 				It gets <code>FLAG</code>, <code>INPUT</code>, <code>OUTPUT_DIR</code> and <code>OUTPUT_NAME</code> and must write one file into <code>OUTPUT_DIR</code>.
-				It is test-run when you save.
+				It is test-run when you save. <a href="https://github.com/rj-karan/ctfd-flagprint/blob/main/docs/GENERATE.md" target="_blank" rel="noopener">How to write one, and a prompt for an AI assistant</a>.
 			</small></label>
 			{% if state.has_script %}<p class="mb-1">Current: <b>generate.py</b> uploaded. Choose a new one only to replace it.</p>{% endif %}
 			<input type="file" class="form-control-file" accept=".py" data-cl-upload="upload_script">
