@@ -3,6 +3,7 @@ import io
 import os
 import shutil
 import tarfile
+import tempfile
 import threading
 import zipfile
 
@@ -218,6 +219,24 @@ def sandbox_image(client):
     return None
 
 
+def sandbox_status():
+    """What the admin form shows: which image will run scripts, or why none will."""
+    try:
+        import docker
+
+        client = docker.from_env()
+        client.ping()
+    except ImportError:
+        return {"ok": False, "detail": "The Python docker package is not installed on the CTFd server."}
+    except Exception as error:  # docker raises several types; the message is what matters
+        return {"ok": False, "detail": f"Docker is not reachable from CTFd: {error}"}
+    image = sandbox_image(client)
+    if image:
+        return {"ok": True, "detail": f"Scripts run in {image}."}
+    return {"ok": False, "detail": f"No sandbox image on this host: scripts run in plain {FALLBACK_IMAGE} "
+                                   f"(no gcc, Pillow or other tools). Run: docker pull {SANDBOX_IMAGES[0]}"}
+
+
 def run_script(script, output_name, flag, input_item=None, label="test"):
     """Run a generate.py in a locked-down container and return the file it wrote.
 
@@ -267,8 +286,9 @@ def run_script(script, output_name, flag, input_item=None, label="test"):
             raise GenerationError(f"generate.py did not finish within {SANDBOX_TIMEOUT}s.") from error
         if result.get("StatusCode") != 0:
             logs = container.logs(tail=20).decode(errors="replace").strip()
-            missing = "No such file or directory" in logs and image == FALLBACK_IMAGE
-            raise GenerationError(f"generate.py failed:\n{logs}" + (f"\n\n{TOOL_HINT}" if missing else ""))
+            # Any failure in the plain Python image may be a missing tool or library: always say how to get them.
+            hint = f"\n\n{TOOL_HINT}" if image == FALLBACK_IMAGE else ""
+            raise GenerationError(f"generate.py failed in {image}:\n{logs}{hint}")
         stream, _ = container.get_archive("/work/out")
         with tarfile.open(fileobj=io.BytesIO(b"".join(stream))) as archive:
             produced = [m for m in archive.getmembers() if m.isfile()]
@@ -308,8 +328,10 @@ def issued_file(challenge, account_id, flag):
         else:
             raise GenerationError("This challenge has no per-team file.")
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        temporary = path + ".tmp"
-        with open(temporary, "wb") as handle:
+        # A unique temporary name: the lock above covers one process, and other gunicorn workers may be
+        # building the same file. Both produce the same bytes, so whichever os.replace lands last is fine.
+        handle = tempfile.NamedTemporaryFile(dir=os.path.dirname(path), prefix=".issue-", delete=False)
+        with handle:
             handle.write(data)
-        os.replace(temporary, path)
+        os.replace(handle.name, path)
     return path

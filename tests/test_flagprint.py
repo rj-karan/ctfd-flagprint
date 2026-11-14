@@ -575,3 +575,28 @@ def test_flag_secret_is_created_once_and_shared():
         app._flagprint_secret = None  # a second worker starting up reads the same row
         assert _secret() == rows[0].value.encode()
     destroy_ctfd(app)
+
+
+@pytest.mark.skipif(not _docker_available(), reason="Docker is required for generator scripts")
+def test_fallback_image_failures_always_carry_the_pull_hint(monkeypatch):
+    from CTFd.plugins.flagprint import files
+
+    monkeypatch.setattr(files, "SANDBOX_IMAGES", ["flagprint/does-not-exist:never"])
+    assert files.sandbox_status()["ok"] is False
+    with pytest.raises(files.GenerationError) as caught:
+        files.run_script(b"from PIL import Image\n", "x.bin", "flag{t3st_0123456789ab}")
+    message = str(caught.value)
+    assert "ModuleNotFoundError" in message and "docker pull" in message and files.FALLBACK_IMAGE in message
+
+
+def test_sandbox_status_is_shown_on_the_edit_page():
+    # The create form is rendered client-side by nunjucks; the edit page is server-rendered jinja,
+    # so the sandbox status (a plugin jinja global) appears there.
+    app = create_ctfd(enable_plugins=True)
+    with app.app_context():
+        admin = login_as_user(app, name="admin")
+        challenge_id = _create(admin).get_json()["data"]["id"]
+        page = admin.get(f"/admin/challenges/{challenge_id}").get_data(as_text=True)
+        from CTFd.plugins.flagprint import files
+        assert files.sandbox_status()["detail"] in page
+    destroy_ctfd(app)

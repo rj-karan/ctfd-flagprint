@@ -694,9 +694,10 @@ def team_flags_regenerate(challenge_id):
 def form_state(challenge):
     """What the edit form shows about a challenge's stored files."""
     if challenge is None:
-        return {}
+        return {"sandbox": files.sandbox_status()}
     found = files.input_file(challenge.id)
     return {
+        "sandbox": files.sandbox_status(),
         "source": challenge.filename if challenge.delivery == "replace" and challenge.filename else None,
         "occurrences": files.sample_occurrences(challenge) if challenge.delivery == "replace" else 0,
         "has_script": os.path.exists(files.script_path(challenge.id)),
