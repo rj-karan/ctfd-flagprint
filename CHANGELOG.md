@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Script delivery shows which sandbox image will run scripts, or that none is present with the exact `docker pull`,
+  on the challenge edit page (#13)
+- A script that fails in the plain Python fallback always gets the "pull the sandbox" hint, including import errors (#13)
+- Issued files are written to a unique temporary name, so two workers building the same team's file can't serve a
+  truncated download (#14)
+
 - `docs/GENERATE.md`: the generate.py contract, six rules, and a copy-paste prompt for writing the script with an
   AI assistant from an existing challenge file
 - `tools/try_generate.py` runs a script locally or in the sandbox image and warns when the flag is visible in the output
