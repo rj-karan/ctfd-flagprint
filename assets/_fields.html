@@ -1,6 +1,6 @@
 {# Per-team settings, shared by the create and update forms. `challenge` is None when creating.
    Files are read in the browser and sent with the form; nothing is saved until every check passes. #}
-{% set state = flagprint_form_state(challenge) if challenge and flagprint_form_state is defined else {} %}
+{% set state = flagprint_form_state(challenge) if flagprint_form_state is defined else {} %}
 {% set mode = challenge.delivery if challenge else 'replace' %}
 <div class="cl-form" data-root="{{ request.script_root }}" data-challenge="{{ challenge.id if challenge else '' }}">
 
@@ -39,6 +39,9 @@
 
 	{# Script ----------------------------------------------------------------------------- #}
 	<div data-cl-show="script">
+		{% if state.sandbox %}
+		<p class="small {{ 'text-muted' if state.sandbox.ok else 'text-danger' }}">{{ state.sandbox.detail }}</p>
+		{% endif %}
 		<div class="form-group">
 			<label>generate.py<br><small class="form-text text-muted">
 				Runs once per team in a locked, offline sandbox with Python 3.12 (plus Pillow, PyCryptodome), gcc/g++ (also -m32, -static), rustc, nasm, strip, patchelf and upx; up to 3 minutes and 1 GB.
