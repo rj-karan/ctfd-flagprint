@@ -12,11 +12,11 @@ jobs:
       matrix:
         ctfd: ["3.8.7", "3.8.9"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: flagprint
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: CTFd/CTFd
           ref: ${{ matrix.ctfd }}
