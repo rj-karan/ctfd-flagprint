@@ -15,6 +15,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from sqlalchemy.orm import contains_eager
 
 from CTFd.models import Challenges, Solves, Submissions, Tracking, Users, Teams, Tokens, db
 from CTFd.exceptions.challenges import ChallengeCreateException, ChallengeUpdateException
@@ -437,7 +438,9 @@ def monitor():
 
     tokens_list = []
     if section == "tokens":
-        for t in _player_tokens().order_by(Tokens.created.desc()).all():
+        # One query: the join already holds each owner, and their team comes along with it.
+        tokens = _player_tokens().options(contains_eager(Tokens.user).joinedload(Users.team))
+        for t in tokens.order_by(Tokens.created.desc()).all():
             team = t.user.team
             tokens_list.append({
                 "id": t.id,
