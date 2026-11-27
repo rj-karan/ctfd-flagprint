@@ -54,6 +54,7 @@ image, a pcap, a binary, a zip. Flagprint gives those files per-team flags too, 
 | **Who leaked it** | A wrong submission that matches another team's flag is logged with both teams, the player, IP and time, and pops up on every admin page. |
 | **Admin monitor** | Share alerts, every submission with its owner, flag lookup, teams sharing an IP, an optional Hall of Shame. |
 | **Team flags panel** | On each challenge: every team's flag, their exact file, solve and sharing counts, and **Regenerate** when a flag leaks. |
+| **Bot kill switch** | Every participant API token in one list. Revoke one, a whole team's, or all of them: scripts, CLI clients and AI agents are cut off on their next request, and nobody is logged out. |
 | **Quiet by default** | The type shows as `classic`, players never see the template, and under a neutral folder name nothing player-facing mentions Flagprint. |
 
 ## How it works
@@ -174,12 +175,13 @@ file. Try a script before uploading with `python tools/try_generate.py generate.
   <img src="docs/images/share-alerts.png" alt="Share alerts: who submitted whose flag, on which challenge, with IP and time">
 </p>
 
-**Admin → Flagprint** has six tabs:
+**Admin → Flagprint** has seven tabs:
 
 - **Share alerts:** every time a team submitted another team's flag.
 - **All submissions** to per-team challenges, each with whose flag it was.
 - **Flag lookup:** paste a flag from a writeup or a Discord screenshot and see which team it was issued to.
 - **Shared IPs:** addresses used by more than one team. A lead, not proof.
+- **User Tokens:** every participant API token, with revoke buttons. See [below](#cut-off-bots-and-ai-agents).
 - **Hall of Shame:** the public page on or off, auto-add caught teams, add or hide entries by hand.
 - **Per-team challenges:** every challenge that uses per-team flags.
 
@@ -200,6 +202,26 @@ New shares pop up on whatever admin page you're on:
 <p align="center">
   <img src="docs/images/alert-toast.png" alt="Flag sharing caught: Root Cause submitted Null Pointers' flag on Exfil" width="440">
 </p>
+
+### Cut off bots and AI agents
+
+Players can create CTFd API tokens and hand them to scripts, CLI clients or AI agents that poll challenges and submit
+flags. **User Tokens** lists every participant token with its owner, team, and expiry, and lets you revoke one token,
+a whole team's tokens, or every participant token at once.
+
+<p align="center">
+  <img src="docs/images/token-revoke.gif" alt="A team's bot gets HTTP 200, the admin revokes the team's tokens, and the bot's next request gets 401" width="880">
+</p>
+
+- Revocation takes effect on the next request: CTFd checks tokens in its database every time.
+- Only tokens go. Players and admins stay logged in to the website.
+- Admin tokens are never listed or revoked from here.
+
+<p align="center">
+  <img src="docs/images/user-tokens.png" alt="User Tokens tab: token, user, email, team, created, expiry, with Revoke, Revoke Team and Revoke All buttons">
+</p>
+
+Contributed by [@aigo-admin](https://github.com/aigo-admin).
 
 ## Compared with other options
 

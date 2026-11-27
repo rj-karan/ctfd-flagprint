@@ -186,8 +186,8 @@
 							{% endif %}
 						</td>
 						<td><span class="badge badge-secondary">{{ t.type }}</span></td>
-						<td class="text-nowrap"><small>{{ t.created }}</small></td>
-						<td class="text-nowrap"><small>{{ t.expiration or 'No Expiry' }}</small></td>
+						<td class="text-nowrap"><small>{{ t.created.strftime('%Y-%m-%d %H:%M') if t.created }}</small></td>
+						<td class="text-nowrap"><small>{{ t.expiration.strftime('%Y-%m-%d %H:%M') if t.expiration else 'No Expiry' }}</small></td>
 						<td class="text-right">
 							<form method="post" action="{{ url_for('flagprint.revoke_token', token_id=t.id) }}" class="d-inline" onsubmit="return confirm('Revoke token #{{ t.id }}?');">
 								<input type="hidden" name="nonce" value="{{ Session.nonce }}">
