@@ -615,12 +615,13 @@ def test_admin_revokes_player_tokens_without_touching_admins_or_sessions():
         other = gen_team(app.db, name="other", email="other@examplectf.com", member_count=1)
         member, outsider = evil.members[0], other.members[0]
         admin_user = Users.query.filter_by(type="admin").first()
-        for user in (admin_user, member, outsider):
+        for user in (admin_user, member, outsider, outsider):  # the outsider has two tokens
             generate_user_token(user)
         # Plain values: ORM objects go stale once the test clients start making requests.
         evil_id, member_id, member_name = evil.id, member.id, member.name
         outsider_id, outsider_name, admin_id = outsider.id, outsider.name, admin_user.id
         admin_token_id = Tokens.query.filter_by(user_id=admin_id).first().id
+        outsider_token_id = Tokens.query.filter_by(user_id=outsider_id).first().id
         admin = login_as_user(app, name="admin")
         player = login_as_user(app, name=member_name)
 
@@ -632,6 +633,11 @@ def test_admin_revokes_player_tokens_without_touching_admins_or_sessions():
             return admin.post(path, data={"nonce": _nonce(admin)})
 
         assert post(f"/admin/flagprint/tokens/revoke/{admin_token_id}").status_code == 404  # not from here
+        post(f"/admin/flagprint/tokens/revoke/{outsider_token_id}")
+        assert Tokens.query.get(outsider_token_id) is None
+        assert Tokens.query.filter_by(user_id=outsider_id).count() == 1  # only the chosen token went
+        assert Tokens.query.filter_by(user_id=member_id).count() == 1
+        assert Tokens.query.get(admin_token_id) is not None
         post(f"/admin/flagprint/tokens/revoke-team/{evil_id}")
         assert Tokens.query.filter_by(user_id=member_id).count() == 0
         assert Tokens.query.filter_by(user_id=outsider_id).count() == 1
