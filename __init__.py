@@ -16,7 +16,7 @@ from flask import (
 )
 from sqlalchemy import func
 
-from CTFd.models import Challenges, Solves, Submissions, Tracking, Users, db
+from CTFd.models import Challenges, Solves, Submissions, Tracking, Users, Teams, Tokens, db
 from CTFd.exceptions.challenges import ChallengeCreateException, ChallengeUpdateException
 from CTFd.plugins import (
     Menu,
@@ -435,6 +435,27 @@ def monitor():
         shame = ShameEntry.query.order_by(ShameEntry.date.desc()).all()
         accounts = get_model().query.order_by(get_model().name).limit(1000).all()
 
+    tokens_list = []
+    if section == "tokens":
+        raw_tokens = Tokens.query.all()
+        for t in raw_tokens:
+            u = Users.query.filter_by(id=t.user_id).first()
+            if u and u.type == "admin":
+                continue
+            team = u.team if (u and u.team) else None
+            tokens_list.append({
+                "id": t.id,
+                "user_id": u.id if u else None,
+                "user_name": u.name if u else "Unknown",
+                "user_email": u.email if u else "Unknown",
+                "team_id": team.id if team else None,
+                "team_name": team.name if team else "No Team",
+                "created": t.created,
+                "expiration": t.expiration,
+                "type": t.type
+            })
+        tokens_list.sort(key=lambda x: str(x["created"] or ""), reverse=True)
+
     lookup = None
     if section == "lookup" and request.args.get("flag"):
         lookup_challenge = next((c for c in per_team if c.id == challenge_id), None) if challenge_id else None
@@ -458,6 +479,7 @@ def monitor():
         shared_ips=shared_ips,
         lookup=lookup,
         shame=shame,
+        tokens_list=tokens_list,
         accounts=accounts,
         shame_enabled=shame_enabled(),
         shame_auto=shame_auto(),
@@ -500,8 +522,9 @@ def shame_admin():
 
 
 @blueprint.route("/admin/flagprint/alerts.json")
-@admins_only
 def alerts_feed():
+    if not is_admin():
+        abort(403)
     """Shared-flag events newer than ?after=<id>, polled by alerts.js on every admin page."""
     after = request.args.get("after", type=int)
     latest = db.session.query(func.max(ShareEvent.id)).scalar() or 0
@@ -735,3 +758,52 @@ def load(app):
         elif listed and not shame_enabled():
             for item in listed:
                 app.plugin_menu_bar.remove(item)
+
+
+@blueprint.route("/admin/flagprint/tokens/revoke/<int:token_id>", methods=["POST"])
+@admins_only
+def revoke_token(token_id):
+    t = Tokens.query.filter_by(id=token_id).first_or_404()
+    u = Users.query.filter_by(id=t.user_id).first()
+    name = u.name if u else str(t.user_id)
+    db.session.delete(t)
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Revoked token #{token_id} for user {name}", "success")
+    return redirect(url_for("flagprint.monitor", section="tokens"))
+
+
+@blueprint.route("/admin/flagprint/tokens/revoke-all", methods=["POST"])
+@admins_only
+def revoke_all_user_tokens():
+    raw_tokens = Tokens.query.all()
+    count = 0
+    for t in raw_tokens:
+        u = Users.query.filter_by(id=t.user_id).first()
+        if u and u.type == "admin":
+            continue
+        db.session.delete(t)
+        count += 1
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Successfully revoked all {count} participant tokens", "success")
+    return redirect(url_for("flagprint.monitor", section="tokens"))
+
+
+@blueprint.route("/admin/flagprint/tokens/revoke-team/<int:team_id>", methods=["POST"])
+@admins_only
+def revoke_team_tokens(team_id):
+    team = Teams.query.filter_by(id=team_id).first_or_404()
+    count = 0
+    for member in team.members:
+        member_tokens = Tokens.query.filter_by(user_id=member.id).all()
+        for t in member_tokens:
+            db.session.delete(t)
+            count += 1
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Revoked {count} tokens belonging to team {team.name}", "success")
+    return redirect(url_for("flagprint.monitor", section="tokens"))
