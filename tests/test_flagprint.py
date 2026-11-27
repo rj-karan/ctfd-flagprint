@@ -600,3 +600,46 @@ def test_sandbox_status_is_shown_on_the_edit_page():
         from CTFd.plugins.flagprint import files
         assert files.sandbox_status()["detail"] in page
     destroy_ctfd(app)
+
+
+def test_admin_revokes_player_tokens_without_touching_admins_or_sessions():
+    import re
+
+    from CTFd.models import Tokens, Users
+    from CTFd.utils.security.auth import generate_user_token
+    from tests.helpers import gen_team
+
+    app = create_ctfd(enable_plugins=True, user_mode="teams")
+    with app.app_context():
+        evil = gen_team(app.db, name="x');alert(1);('", member_count=1)
+        other = gen_team(app.db, name="other", email="other@examplectf.com", member_count=1)
+        member, outsider = evil.members[0], other.members[0]
+        admin_user = Users.query.filter_by(type="admin").first()
+        for user in (admin_user, member, outsider):
+            generate_user_token(user)
+        # Plain values: ORM objects go stale once the test clients start making requests.
+        evil_id, member_id, member_name = evil.id, member.id, member.name
+        outsider_id, outsider_name, admin_id = outsider.id, outsider.name, admin_user.id
+        admin_token_id = Tokens.query.filter_by(user_id=admin_id).first().id
+        admin = login_as_user(app, name="admin")
+        player = login_as_user(app, name=member_name)
+
+        page = admin.get("/admin/flagprint?section=tokens").get_data(as_text=True)
+        assert member_name in page and outsider_name in page
+        assert not any("alert(1)" in handler for handler in re.findall(r'onsubmit="([^"]*)"', page))
+
+        def post(path):
+            return admin.post(path, data={"nonce": _nonce(admin)})
+
+        assert post(f"/admin/flagprint/tokens/revoke/{admin_token_id}").status_code == 404  # not from here
+        post(f"/admin/flagprint/tokens/revoke-team/{evil_id}")
+        assert Tokens.query.filter_by(user_id=member_id).count() == 0
+        assert Tokens.query.filter_by(user_id=outsider_id).count() == 1
+        assert "Revoked 1 tokens" in admin.get("/admin/flagprint?section=tokens").get_data(as_text=True)
+
+        post("/admin/flagprint/tokens/revoke-all")
+        assert [t.user_id for t in Tokens.query.all()] == [admin_id]
+        # Revoking tokens must not log anyone out (sessions live in CTFd's cache).
+        assert player.get("/challenges").status_code == 200
+        assert admin.get("/admin/flagprint").status_code == 200
+    destroy_ctfd(app)
