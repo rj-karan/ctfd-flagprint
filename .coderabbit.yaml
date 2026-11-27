@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+
+reviews:
+  # An anti-cheat plugin: prefer more findings over fewer.
+  profile: assertive
+  poem: false
+  in_progress_fortune: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!docs/images/**"
+    - "!docs/*.svg"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Flagprint gives each CTF team its own flag and files. Flag any change that:
+        - lets a player see another team's flag, file, the flag template, or the HMAC secret (API responses, templates, error messages, logs);
+        - adds an admin route or JSON endpoint without @admins_only, or a state change without CTFd's nonce/CSRF check;
+        - puts player-controlled text (team or user names, challenge fields) inside inline JavaScript or an on* attribute: HTML escaping is undone there;
+        - makes anything a player can see mention Flagprint or hint that flags differ per team;
+        - clears CTFd's whole cache (it also holds sessions, so everyone is logged out);
+        - weakens the generate.py sandbox: network, capabilities, memory, pids, timeout, or running anything outside it.
+    - path: "tests/**"
+      instructions: |
+        Tests run inside a CTFd checkout (see the CI workflow). Capture ORM values as plain ids and names before test clients make requests.
+        Every fix and new route needs a test; security fixes need a test that fails on the old code.
+    - path: "generator/**"
+      instructions: |
+        The sandbox image is published to ghcr.io and pulled by organizers: keep it reproducible, avoid curl-pipe installs, and keep its size reasonable.
