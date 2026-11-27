@@ -437,18 +437,26 @@ def monitor():
 
     tokens_list = []
     if section == "tokens":
-        for t in _player_tokens().order_by(Tokens.created.desc()).all():
-            team = t.user.team
+        raw_tokens = (
+            db.session.query(Tokens, Users)
+            .outerjoin(Users, Tokens.user_id == Users.id)
+            .filter((Users.type != "admin") | (Users.type.is_(None)))
+            .order_by(Tokens.created.desc())
+            .limit(1000)
+            .all()
+        )
+        for t, u in raw_tokens:
+            team = u.team if (u and u.team) else None
             tokens_list.append({
                 "id": t.id,
-                "user_id": t.user.id,
-                "user_name": t.user.name,
-                "user_email": t.user.email,
+                "user_id": u.id if u else None,
+                "user_name": u.name if u else "Unknown",
+                "user_email": u.email if u else "Unknown",
                 "team_id": team.id if team else None,
                 "team_name": team.name if team else "No Team",
-                "created": t.created,
-                "expiration": t.expiration,
-                "type": t.type,
+                "created": t.created.strftime("%Y-%m-%d %H:%M:%S") if t.created else "Unknown",
+                "expiration": t.expiration.strftime("%Y-%m-%d %H:%M:%S") if t.expiration else "No Expiry",
+                "type": t.type
             })
 
     lookup = None
@@ -517,8 +525,9 @@ def shame_admin():
 
 
 @blueprint.route("/admin/flagprint/alerts.json")
-@admins_only
 def alerts_feed():
+    if not is_admin():
+        abort(403)
     """Shared-flag events newer than ?after=<id>, polled by alerts.js on every admin page."""
     after = request.args.get("after", type=int)
     latest = db.session.query(func.max(ShareEvent.id)).scalar() or 0
@@ -754,36 +763,35 @@ def load(app):
                 app.plugin_menu_bar.remove(item)
 
 
-def _player_tokens():
-    """API tokens of non-admin users. CTFd looks tokens up in the database on every request,
-    so deleting the row is the whole revocation: no cache to clear, and sessions stay intact."""
-    return Tokens.query.join(Users, Users.id == Tokens.user_id).filter(Users.type != "admin")
-
-
-def _revoke(tokens):
-    count = 0
-    for token in tokens:
-        db.session.delete(token)
-        count += 1
-    db.session.commit()
-    return count
-
-
 @blueprint.route("/admin/flagprint/tokens/revoke/<int:token_id>", methods=["POST"])
 @admins_only
 def revoke_token(token_id):
-    token = _player_tokens().filter(Tokens.id == token_id).first_or_404()
-    name = token.user.name
-    _revoke([token])
-    flash(f"Revoked token #{token_id} for user {name}", "success")
+    t = Tokens.query.filter_by(id=token_id).first_or_404()
+    u = Users.query.filter_by(id=t.user_id).first()
+    name = u.name if u else str(t.user_id)
+    db.session.delete(t)
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Revoked token #{token_id}", "success")
     return redirect(url_for("flagprint.monitor", section="tokens"))
 
 
 @blueprint.route("/admin/flagprint/tokens/revoke-all", methods=["POST"])
 @admins_only
 def revoke_all_user_tokens():
-    count = _revoke(_player_tokens().all())
-    flash(f"Revoked all {count} participant tokens", "success")
+    raw_tokens = Tokens.query.all()
+    count = 0
+    for t in raw_tokens:
+        u = Users.query.filter_by(id=t.user_id).first()
+        if u and u.type == "admin":
+            continue
+        db.session.delete(t)
+        count += 1
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Successfully revoked all {count} participant tokens", "success")
     return redirect(url_for("flagprint.monitor", section="tokens"))
 
 
@@ -791,6 +799,14 @@ def revoke_all_user_tokens():
 @admins_only
 def revoke_team_tokens(team_id):
     team = Teams.query.filter_by(id=team_id).first_or_404()
-    count = _revoke(_player_tokens().filter(Users.team_id == team.id).all())
-    flash(f"Revoked {count} tokens belonging to team {team.name}", "success")
+    count = 0
+    for member in team.members:
+        member_tokens = Tokens.query.filter_by(user_id=member.id).all()
+        for t in member_tokens:
+            db.session.delete(t)
+            count += 1
+    db.session.commit()
+    from flask import current_app
+    current_app.cache.clear()
+    flash(f"Revoked {count} tokens for the selected team", "success")
     return redirect(url_for("flagprint.monitor", section="tokens"))

@@ -18,9 +18,6 @@
 		{% endfor %}
 	</ul>
 
-	{% with messages = get_flashed_messages(with_categories=true) %}
-		{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}
-	{% endwith %}
 	{% if section in ('alerts', 'submissions') %}
 	<form class="form-inline mb-3" method="get">
 		<input type="hidden" name="section" value="{{ section }}">
@@ -209,6 +206,9 @@
 		{% endif %}
 
 	{% elif section == 'shame' %}
+		{% with messages = get_flashed_messages(with_categories=true) %}
+			{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}
+		{% endwith %}
 		<div class="card mb-4"><div class="card-body">
 			<h5>Settings</h5>
 			<form method="post" action="{{ url_for('flagprint.shame_admin') }}">
