@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **User Tokens** tab: list every participant API token and revoke one, a team's, or all of them, without logging
+  anyone out; admin tokens are never touched. Contributed by @aigo-admin (#17, #19)
 - Script delivery shows which sandbox image will run scripts, or that none is present with the exact `docker pull`,
   on the challenge edit page (#13)
 - A script that fails in the plain Python fallback always gets the "pull the sandbox" hint, including import errors (#13)
